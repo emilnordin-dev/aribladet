@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#c40000">
+<title>AriBladet</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f2;color:#111}
+
+/* ===== HEADER (AFTONBLADET STYLE) ===== */
+header{
+ background:#c40000;
+ color:#fff;
+ padding:15px;
+ position:sticky;
+ top:0;
+ z-index:100;
+}
+header h1{font-size:28px;font-weight:800;letter-spacing:.5px}
+
+.topbar{
+ display:flex;
+ justify-content:space-between;
+ align-items:center;
+ margin-top:10px;
+}
+.search{
+ padding:10px 15px;
+ border-radius:20px;
+ border:none;
+ width:65%;
+ font-size:14px;
+}
+.menu-btn{
+ background:#000;
+ color:#fff;
+ border:none;
+ padding:10px 15px;
+ border-radius:20px;
+ cursor:pointer;
+}
+
+/* ===== BREAKING NEWS ===== */
+.breaking{
+ background:#000;
+ color:#fff;
+ padding:8px 15px;
+ font-size:13px;
+ font-weight:600;
+}
+
+/* ===== LAYOUT ===== */
+.container{max-width:1100px;margin:20px auto;padding:0 15px}
+
+.hero{
+ background:#fff;
+ border-radius:20px;
+ padding:20px;
+ margin-bottom:25px;
+ box-shadow:0 5px 20px rgba(0,0,0,.08);
+}
+.hero h2{font-size:26px;margin-bottom:10px}
+.hero p{color:#555}
+
+.grid{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+ gap:20px;
+}
+
+.card{
+ background:#fff;
+ border-radius:18px;
+ padding:18px;
+ box-shadow:0 4px 15px rgba(0,0,0,.06);
+ display:flex;
+ flex-direction:column;
+}
+.card h3{margin:10px 0;font-size:18px}
+.card p{font-size:14px;color:#666}
+.meta{font-size:12px;color:#999;margin-top:8px}
+
+.category{
+ font-size:11px;
+ font-weight:700;
+ color:#c40000;
+ text-transform:uppercase;
+}
+
+.btn{
+ margin-top:auto;
+ padding:10px;
+ border:none;
+ border-radius:20px;
+ cursor:pointer;
+ font-weight:600;
+ background:#c40000;
+ color:#fff;
+}
+
+/* ===== MODAL ===== */
+.modal{
+ display:none;
+ position:fixed;
+ inset:0;
+ background:rgba(0,0,0,.6);
+ justify-content:center;
+ align-items:center;
+ padding:20px;
+}
+.modal-content{
+ background:#fff;
+ max-width:700px;
+ width:100%;
+ max-height:90vh;
+ overflow:auto;
+ border-radius:20px;
+ padding:25px;
+}
+.close{float:right;font-weight:bold;cursor:pointer}
+
+.actions{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+.action-btn{
+ padding:10px 15px;
+ border:none;
+ border-radius:20px;
+ cursor:pointer;
+ font-weight:600;
+}
+.download{background:#34c759;color:#fff}
+.favorite{background:#ffcc00}
+
+@media(max-width:600px){
+ .hero h2{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>AriBladet</h1>
+<div class="topbar">
+<input type="text" class="search" placeholder="Sök nyheter..." oninput="searchArticles(this.value)">
+<button class="menu-btn" onclick="toggleFavorites()">⭐ Sparade</button>
+</div>
+</header>
+
+<div class="breaking">🔴 SENASTE: Ny modern version av AriBladet lanserad!</div>
+
+<div class="container">
+<div class="hero" id="hero"></div>
+<div class="grid" id="articles"></div>
+</div>
+
+<div class="modal" id="articleModal">
+<div class="modal-content">
+<span class="close" onclick="closeModal()">✕</span>
+<h2 id="modalTitle"></h2>
+<p id="modalText"></p>
+<div class="actions">
+<button class="action-btn download" onclick="downloadTXT()">Ladda ner TXT</button>
+<button class="action-btn favorite" onclick="saveFavorite()">⭐ Spara</button>
+</div>
+</div>
+</div>
+
+<script>
+let articles=[];
+let favorites=JSON.parse(localStorage.getItem("favorites")||"[]");
+let currentArticle=null;
+
+/* ===== LOAD ARTICLES FROM EXTERNAL FILE ===== */
+fetch("articles.json")
+.then(res=>res.json())
+.then(data=>{
+ articles=data;
+ renderHero();
+ renderArticles();
+});
+
+function renderHero(){
+ if(!articles.length) return;
+ const hero=articles[0];
+ document.getElementById("hero").innerHTML=`
+  <div class="category">${hero.category}</div>
+  <h2>${hero.title}</h2>
+  <p>${hero.content.substring(0,120)}...</p>
+  <button class="btn" onclick="openArticle(${hero.id})">Läs mer</button>`;
+}
+
+function renderArticles(list=articles){
+ const container=document.getElementById("articles");
+ container.innerHTML="";
+ list.slice(1).forEach(article=>{
+  container.innerHTML+=`
+   <div class="card">
+    <div class="category">${article.category}</div>
+    <h3>${article.title}</h3>
+    <p>${article.content.substring(0,80)}...</p>
+    <div class="meta">${article.date}</div>
+    <button class="btn" onclick="openArticle(${article.id})">Läs</button>
+   </div>`;
+ });
+}
+
+function searchArticles(q){
+ const filtered=articles.filter(a=>a.title.toLowerCase().includes(q.toLowerCase()));
+ renderArticles(filtered);
+}
+
+function openArticle(id){
+ const article=articles.find(a=>a.id===id);
+ currentArticle=article;
+ document.getElementById("modalTitle").innerText=article.title;
+ document.getElementById("modalText").innerText=article.content;
+ document.getElementById("articleModal").style.display="flex";
+}
+
+function closeModal(){document.getElementById("articleModal").style.display="none"}
+
+function downloadTXT(){
+ const blob=new Blob([currentArticle.title+"\n\n"+currentArticle.content],{type:"text/plain"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="artikel.txt";
+ a.click();
+}
+
+function saveFavorite(){
+ if(!favorites.includes(currentArticle.id)){
+  favorites.push(currentArticle.id);
+  localStorage.setItem("favorites",JSON.stringify(favorites));
+  alert("Sparad!");
+ }
+}
+
+function toggleFavorites(){
+ const favArticles=articles.filter(a=>favorites.includes(a.id));
+ renderArticles(favArticles);
+}
+</script>
+
+</body>
+</html>
